@@ -139,6 +139,33 @@
   instruction, skill, stage, and index. Annotation IDs resolve through `meta/tasks.jsonl`;
   sequential decoding checks timestamps and frame counts before finalizing each MP4.
 
+## RL benchmark (`src/rl_benchmark`)
+
+Shared pipeline for comparing rewards; the README there is the user guide. A run is (task, reward,
+seed); everything else is fixed.
+
+- **Task spec** (`tasks/<task>.yaml`): RoboCasa env, pinned dataset, reference episode, horizon,
+  policy cameras, training-start distribution, fixed reward terms, number of evaluation trials.
+  `tasks/<task>_split.json` fixes which demos rewards may learn from (`reward_train`), which are
+  held out, and the reference (never used to train a reward).
+- **Simulation** (`benchmark/sim.py`): the task in the reference demo's scene (its XML and states,
+  fixture poses synced from the XML); 7-d arm action; policy cameras at 84 px; optional reward images
+  every N steps; resets restore a demo state, with seeded N(0, 0.0005) arm/object noise for step-0
+  starts; controller goals and the gripper ramp are reset per start.
+- **Reward interface** (`benchmark/rewards/base.py`): a reward returns only per-step shaping at episode
+  end (`new_episode`, `add_image`, `process`, `finish`); step reward = shaping + 5·success − 0.5.
+  `sparse` adds nothing; `rarm` follows RARM's released RL reward.
+- **Training** (`train.py`): DrQ-v2 (RARM Table 5 network, released defaults), 1M env steps, a
+  checkpoint every 100k, starts 95% from demo states uniform in [1%, 95%) and 5% from step 0, half the
+  episodes replaying 70 demo actions first, episodes end after 2 consecutive success steps or 876 steps.
+  Replay: newest 750k transitions in memory-mapped files; NumPy-only sampler processes fill
+  shared-memory batch slots. Simulator and sampler counts change speed only.
+- **Evaluation** (`benchmark/evaluation.py`): 30 trials per checkpoint from demo step 0, noise seed =
+  trial index, deterministic actions, success at any step within the horizon.
+- **Results**: `outputs/rl_benchmark/<task>/<reward>/seed_<k>/` (config, logs, episodes,
+  `eval/results.json`; checkpoints are not tracked by git). `collect_results.py` writes
+  `outputs/rl_benchmark/dashboard/` (mean, 95% bootstrap interval and range over seeds).
+
 ## References
 
 - [RoboCasa dataset loading](https://robocasa.ai/docs/build/html/datasets/using_datasets.html)

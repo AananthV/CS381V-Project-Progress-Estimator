@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RL Benchmark Results</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #fff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e2e1dc; --grid: #ecebe6;
+    --c0: #2f6fb3; --c1: #d1782a; --c2: #3a9a5b; --c3: #a3478f; --c4: #7f7a2a; --c5: #c8453b; --c6: #4b8f9e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161615; --panel: #1f1f1d; --ink: #ecebe6; --muted: #9a9993; --line: #34332f; --grid: #2a2a27;
+      --c0: #6aa5e6; --c1: #f0a24a; --c2: #5cc184; --c3: #d77cc0; --c4: #c9c25a; --c5: #e0675c; --c6: #79c2d1;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 10px; }
+  select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+  label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+  svg { width: 100%; height: auto; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; font-size: 13px; }
+  .legend span { cursor: pointer; user-select: none; }
+  .legend span.off { opacity: 0.35; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-weight: 600; }
+  .tip { position: fixed; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+         padding: 6px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15); display: none; z-index: 5; }
+  .note { color: var(--muted); font-size: 12px; }
+  .empty { color: var(--muted); padding: 30px; text-align: center; }
+  details summary { cursor: pointer; color: var(--muted); }
+  pre { white-space: pre-wrap; font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>RL benchmark: step-0 success</h1>
+  <div class="sub" id="sub"></div>
+  <div class="controls">
+    <label>Task <select id="task"></select></label>
+    <label>Band <select id="band">
+      <option value="ci">95% CI of the mean</option>
+      <option value="range">min–max over seeds</option>
+      <option value="none">none</option>
+    </select></label>
+    <label><input type="checkbox" id="seeds" checked> individual seeds</label>
+  </div>
+  <div class="panel"><svg id="chart" viewBox="0 0 900 420" role="img" aria-label="Success rate against training steps"></svg>
+    <div class="legend" id="legend"></div></div>
+  <div class="panel scroll"><table id="summary"></table>
+    <div class="note">Success: fraction of the evaluation trials (all from demo step 0, noise seed = trial index) that
+      complete the task. Final: last checkpoint. Best: best checkpoint of each seed, averaged. AUC: mean over all
+      checkpoints. Intervals: 95% bootstrap over seeds.</div></div>
+  <div class="panel scroll"><table id="perseed"></table><div id="notes"></div></div>
+</main>
+<div class="tip" id="tip"></div>
+<script src="data.js"></script>
+<script>
+const D = window.BENCHMARK || {tasks: {}};
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const color = (i) => css(`--c${i % 7}`);
+const hidden = new Set();
+const pct = (x) => (100 * x).toFixed(0) + "%";
+const fmtCI = (p) => `${pct(p.mean)} [${pct(p.ci[0])}, ${pct(p.ci[1])}]`;
+$("sub").textContent = `Collected ${D.generated || "never"} · regenerate with collect_results.py`;
+
+const tasks = Object.keys(D.tasks).sort();
+for (const t of tasks) { const o = document.createElement("option"); o.value = o.textContent = t; $("task").appendChild(o); }
+["task", "band", "seeds"].forEach((id) => $(id).addEventListener("change", render));
+
+function render() {
+  const svg = $("chart");
+  svg.innerHTML = "";
+  const task = $("task").value;
+  if (!task) { svg.outerHTML = '<div class="empty">No results yet. Run evaluate.py, then collect_results.py.</div>'; return; }
+  const rewards = Object.keys(D.tasks[task]).sort();
+  const W = 900, H = 420, L = 56, R = 16, T = 14, B = 44, pw = W - L - R, ph = H - T - B;
+  const maxStep = Math.max(...rewards.flatMap((r) => D.tasks[task][r].points.map((p) => p.step)));
+  const X = (s) => L + (s / maxStep) * pw, Y = (v) => T + (1 - v) * ph;
+  const el = (name, attrs, parent = svg) => {
+    const e = document.createElementNS("http://www.w3.org/2000/svg", name);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    parent.appendChild(e); return e;
+  };
+  for (let v = 0; v <= 1.0001; v += 0.2) {
+    el("line", {x1: L, x2: W - R, y1: Y(v), y2: Y(v), stroke: css("--grid")});
+    el("text", {x: L - 8, y: Y(v) + 4, "text-anchor": "end", "font-size": 12, fill: css("--muted")}).textContent = pct(v);
+  }
+  const ticks = 5, unit = maxStep >= 1e6 ? 1e6 : 1e3, suffix = unit === 1e6 ? "M" : "k";
+  for (let i = 0; i <= ticks; i++) {
+    const s = (maxStep * i) / ticks;
+    el("text", {x: X(s), y: H - B + 18, "text-anchor": "middle", "font-size": 12, fill: css("--muted")})
+      .textContent = (s / unit).toFixed(unit === 1e6 ? 1 : 0) + suffix;
+  }
+  el("text", {x: L + pw / 2, y: H - 6, "text-anchor": "middle", "font-size": 12, fill: css("--muted")}).textContent = "environment steps";
+  el("text", {x: 14, y: T + ph / 2, "text-anchor": "middle", "font-size": 12, fill: css("--muted"),
+              transform: `rotate(-90 14 ${T + ph / 2})`}).textContent = "step-0 success rate";
+  const band = $("band").value;
+  rewards.forEach((r, i) => {
+    if (hidden.has(r)) return;
+    const pts = D.tasks[task][r].points, c = color(i);
+    if (band !== "none" && pts.length) {
+      const lo = (p) => (band === "ci" ? p.ci[0] : p.min), hi = (p) => (band === "ci" ? p.ci[1] : p.max);
+      const d = pts.map((p, k) => `${k ? "L" : "M"}${X(p.step)},${Y(hi(p))}`).join("") +
+                [...pts].reverse().map((p) => `L${X(p.step)},${Y(lo(p))}`).join("") + "Z";
+      el("path", {d, fill: c, "fill-opacity": 0.16, stroke: "none"});
+    }
+    if ($("seeds").checked) {
+      const seeds = Object.keys(D.tasks[task][r].seeds);
+      for (const s of seeds) {
+        const sp = pts.filter((p) => s in p.seeds);
+        el("polyline", {points: sp.map((p) => `${X(p.step)},${Y(p.seeds[s])}`).join(" "), fill: "none",
+                        stroke: c, "stroke-width": 1, "stroke-opacity": 0.45});
+      }
+    }
+    el("polyline", {points: pts.map((p) => `${X(p.step)},${Y(p.mean)}`).join(" "), fill: "none", stroke: c, "stroke-width": 2.5});
+    for (const p of pts) {
+      const dot = el("circle", {cx: X(p.step), cy: Y(p.mean), r: 4, fill: c});
+      dot.addEventListener("mousemove", (e) => {
+        const tip = $("tip");
+        tip.innerHTML = `<b>${r}</b> · ${(p.step / 1000).toFixed(0)}k steps<br>mean ${fmtCI(p)} · n=${p.n}<br>` +
+          `range ${pct(p.min)}–${pct(p.max)}<br>` + Object.entries(p.seeds).map(([s, v]) => `seed ${s}: ${pct(v)}`).join("<br>");
+        tip.style.display = "block"; tip.style.left = e.clientX + 12 + "px"; tip.style.top = e.clientY + 12 + "px";
+      });
+      dot.addEventListener("mouseleave", () => ($("tip").style.display = "none"));
+    }
+  });
+  $("legend").innerHTML = "";
+  rewards.forEach((r, i) => {
+    const n = Object.keys(D.tasks[task][r].seeds).length;
+    const s = document.createElement("span");
+    s.className = hidden.has(r) ? "off" : "";
+    s.innerHTML = `<i class="sw" style="background:${color(i)}"></i>${r} (${n} seed${n === 1 ? "" : "s"})`;
+    s.onclick = () => { hidden.has(r) ? hidden.delete(r) : hidden.add(r); render(); };
+    $("legend").appendChild(s);
+  });
+  summary(task, rewards);
+}
+
+function mean(v) { return v.reduce((a, b) => a + b, 0) / v.length; }
+function boot(v) {
+  if (v.length < 2) return [v[0], v[0]];
+  const m = [];
+  for (let i = 0; i < 4000; i++) { let s = 0; for (let j = 0; j < v.length; j++) s += v[(Math.random() * v.length) | 0]; m.push(s / v.length); }
+  m.sort((a, b) => a - b); return [m[Math.floor(0.025 * m.length)], m[Math.floor(0.975 * m.length)]];
+}
+function summary(task, rewards) {
+  const rows = rewards.map((r, i) => {
+    const seeds = Object.values(D.tasks[task][r].seeds);
+    const cell = (key) => { const v = seeds.map((s) => s[key]); const c = boot(v); return `${pct(mean(v))} [${pct(c[0])}, ${pct(c[1])}]`; };
+    return `<tr><td><i class="sw" style="background:${color(i)}"></i>${r}</td><td>${seeds.length}</td>` +
+           `<td>${cell("final")}</td><td>${cell("best")}</td><td>${cell("auc")}</td></tr>`;
+  });
+  $("summary").innerHTML = `<tr><th>Reward</th><th>Seeds</th><th>Final</th><th>Best checkpoint</th><th>AUC</th></tr>` + rows.join("");
+  const per = [], notes = [];
+  rewards.forEach((r) => Object.entries(D.tasks[task][r].seeds).forEach(([s, v]) => {
+    per.push(`<tr><td>${r}</td><td>${s}</td><td>${pct(v.final)}</td><td>${pct(v.best)}</td><td>${pct(v.auc)}</td>` +
+             `<td>${(v.last_step / 1000).toFixed(0)}k</td><td>${v.trials}</td></tr>`);
+    if (v.notes) notes.push(`<details><summary>${r} seed ${s}: provenance</summary><pre>${v.notes.replace(/</g, "&lt;")}</pre></details>`);
+  }));
+  $("perseed").innerHTML = `<tr><th>Reward</th><th>Seed</th><th>Final</th><th>Best</th><th>AUC</th><th>Last checkpoint</th><th>Trials</th></tr>` + per.join("");
+  $("notes").innerHTML = notes.join("");
+}
+render();
+</script>
+</body>
+</html>

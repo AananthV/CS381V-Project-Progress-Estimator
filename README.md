@@ -101,6 +101,12 @@ per episode without balancing stages, then excludes same-subtask pairs; scored p
 saved in `offline/stage_pairs.csv`. Milestones are the exact first new-label frames, including
 task complete; there are no numeric progress targets. [Full protocol](docs/OFFLINE_METRICS.md).
 
+## RL benchmark (GPU / simulator)
+
+[`src/rl_benchmark/`](src/rl_benchmark/README.md): fixed simulation, DrQ-v2 training and step-0
+evaluation for comparing reward models across seeds and tasks. Start there to run a (reward, seed);
+the dashboard is `outputs/rl_benchmark/dashboard/index.html`.
+
 ## Configure and extend
 
 Edit [configs/prepare_coffee.yaml](configs/prepare_coffee.yaml): camera selection, frame/history

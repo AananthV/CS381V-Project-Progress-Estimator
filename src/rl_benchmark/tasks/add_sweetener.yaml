@@ -1,0 +1,44 @@
+# AddSweetener: put the two sugar cubes from the plate into the blender (RoboCasa composite task).
+# Everything task-specific the benchmark needs. Simulation, RL and evaluation read only this file.
+name: add_sweetener
+env_name: AddSweetener
+
+dataset:
+  repo: nvidia/PhysicalAI-Robotics-Manipulation-Kitchen-Demos
+  path: pretrain/composite/AddSweetener/20250829/lerobot
+  revision: 522e4ffa3bb9d9729f79b241c65fc9e589f2659c
+  local: data/add_sweetener/lerobot   # relative to the project root
+
+# The one demo RL uses: its kitchen, objects and states are the RL scene; its states are the
+# start states; RARM-style rewards use it as their reference. 2 cubes, 438 steps (21.9 s).
+reference_episode: 17
+# Fixed split of the other demos, for rewards that learn from demos (see README "Data").
+split: add_sweetener_split.json
+
+horizon: 876                 # env steps per episode (2x the reference demo), 20 Hz
+policy_cameras: [robot0_agentview_left, robot0_eye_in_hand]
+policy_image_size: 84
+frame_stack: 3
+success_hold_steps: 2        # episode terminates once success holds this many steps
+
+budget:
+  total_steps: 1000000
+  checkpoint_every: 100000
+
+# Training starts, as RARM's released code (env_constants.py)
+starts:
+  demo_prob: 0.95            # else demo step 0 + noise
+  start_ratio: 0.01          # demo starts uniform in [start_ratio, end_ratio) of the demo,
+  end_ratio: 0.95            # skipping states that already count as success
+  init_noise_std: 0.0005     # arm joints and free objects, step-0 starts
+  action_buffer_prob: 0.5    # replay the next demo actions (+ noise) before the policy acts
+  action_buffer_length: 70
+  action_buffer_noise: 0.01
+
+# Every reward is compared under the same fixed terms; a reward only adds its shaping term.
+reward_terms:
+  success: 5.0
+  step_cost: 0.5
+
+evaluation:
+  trials: 30                 # each from demo step 0; trial k uses noise seed k (shared by everyone)

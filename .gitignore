@@ -15,7 +15,13 @@ dist/
 
 # Downloaded data and generated evaluation/video artifacts.
 data/
-outputs/
+outputs/*
+# RL benchmark: results and dashboard are shared; weights and logs are not.
+!outputs/rl_benchmark/
+outputs/rl_benchmark/_models/
+outputs/rl_benchmark/**/checkpoints/
+outputs/rl_benchmark/**/resume.pt
+outputs/rl_benchmark/**/*.log
 
 # Local credentials, editor settings, and OS metadata.
 .env

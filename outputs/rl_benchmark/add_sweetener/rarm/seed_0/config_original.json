@@ -1,0 +1,14 @@
+{
+  "steps": 1000000,
+  "envs": 2,
+  "seed": 0,
+  "reference": 17,
+  "horizon": 876,
+  "checkpoint_every": 100000,
+  "replay_dir": "<local disk, not recorded>",
+  "replay_size": 750000,
+  "tag": "rarm_seed0",
+  "resume": true,
+  "log_every": 2000,
+  "samplers": 2
+}
