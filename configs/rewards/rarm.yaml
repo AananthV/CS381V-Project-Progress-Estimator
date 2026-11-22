@@ -1,0 +1,5 @@
+# RARM as released: original comparator, per-clip argmax with the gate (baseline).
+type: rarm
+comparator: original
+matcher: rule
+gate_slack: 0.5

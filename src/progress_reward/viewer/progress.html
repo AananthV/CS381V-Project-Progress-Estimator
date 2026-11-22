@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cross-Environment References</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e2e1dc;
+    --rarm: #2f6fb3; --hmm: #c0392b; --rel: #1f8a5f; --conf: #e08a1e; --weak: #b9b8b2;
+    --grasp: #3a9a5b; --release: #c8453b; --success: #3a9a5b; --diag: #c9c8c2; --cursor: #1d1d1b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161615; --panel: #1f1f1d; --ink: #ecebe6; --muted: #9a9993; --line: #34332f;
+      --rarm: #6aa5e6; --hmm: #ef6b5b; --rel: #4fc994; --conf: #f0a24a; --weak: #5d5c57;
+      --grasp: #5cc184; --release: #e0675c; --success: #5cc184; --diag: #4a4945; --cursor: #ecebe6;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161615; --panel: #1f1f1d; --ink: #ecebe6; --muted: #9a9993; --line: #34332f;
+    --rarm: #6aa5e6; --hmm: #ef6b5b; --rel: #4fc994; --conf: #f0a24a; --weak: #5d5c57;
+    --grasp: #5cc184; --release: #e0675c; --success: #5cc184; --diag: #4a4945; --cursor: #ecebe6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  h1 { font-size: 18px; margin: 0 auto 0 0; }
+  select, button { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+                   border-radius: 6px; padding: 5px 10px; max-width: 100%; }
+  button { cursor: pointer; min-width: 70px; }
+  .metrics td.grp, .metrics th.grp { border-left: 1px solid var(--line); }
+  .muted { color: var(--muted); }
+  .views { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .view { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; min-width: 0; }
+  .view h2 { font-size: 13px; font-weight: 600; margin: 0 0 8px; color: var(--muted); min-height: 36px; }
+  .view h2 b { color: var(--ink); }
+  .main-img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 4px; background: #000; display: block; }
+  img:not([src]) { visibility: hidden; }
+  .strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 6px; }
+  .strip img { width: 100%; aspect-ratio: 1; border-radius: 3px; background: #000; display: block; }
+  .strip-label { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0; padding: 10px 12px;
+           background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  .stat span { color: var(--muted); font-size: 12px; display: block; }
+  .stat b { font-variant-numeric: tabular-nums; font-size: 15px; }
+  .badge { padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+  .yes { background: color-mix(in srgb, var(--conf) 22%, transparent); color: var(--conf); }
+  .no { background: color-mix(in srgb, var(--weak) 30%, transparent); color: var(--muted); }
+  .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin-bottom: 12px; }
+  .chart h3 { font-size: 13px; margin: 2px 4px 6px; color: var(--muted); font-weight: 600; }
+  canvas { width: 100%; display: block; cursor: crosshair; height: 250px; }
+  .slider { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  input[type=range] { flex: 1; accent-color: var(--rel); }
+  .toggles { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 4px 8px; }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 9px 3px 7px;
+            border: 1px solid var(--line); border-radius: 14px; cursor: pointer; user-select: none; color: var(--ink); }
+  .toggle input { margin: 0; accent-color: var(--ink); }
+  .toggle.off { color: var(--muted); opacity: .6; }
+  .toggle svg { display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin: 6px 4px 0; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 5px 9px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+  thead tr:first-child th { border-bottom: none; text-align: center; }
+  tr.sel td { background: color-mix(in srgb, var(--rel) 10%, transparent); }
+  tbody tr { cursor: pointer; }
+  details { margin-top: 12px; color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 860px) { .views { grid-template-columns: 1fr 1fr; } .views .view:first-child { grid-column: 1 / -1; } }
+  @media (max-width: 520px) { .views { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>RARM progress with references from other kitchens</h1>
+    <select id="ref" aria-label="reference demo"></select>
+    <select id="episode" aria-label="episode"></select>
+    <select id="setting" aria-label="setting shown in the right panel"></select>
+    <button id="play">Play</button>
+    <select id="speed" aria-label="speed"><option value="1">1×</option><option value="2" selected>2×</option><option value="4">4×</option></select>
+  </header>
+
+  <div class="chart">
+    <h3>Success vs failure over references (headline settings bold): AUROC and gap (lowest success minus highest
+      failure) of final progress; the reference demo itself is left out. Test: 9 kitchens never looked at before;
+      dev: 3 kitchens used to choose the relative HMM.</h3>
+    <div class="tablewrap"><table class="metrics"><thead id="mhead"></thead><tbody id="mbody"></tbody></table></div>
+  </div>
+
+  <div class="views">
+    <div class="view">
+      <h2 id="rollout-title">Rollout</h2>
+      <img id="rollout" class="main-img" alt="current rollout frame">
+      <div id="rollout-strip" class="strip"></div>
+      <div class="strip-label">Scored query clip: 5 images, one every 4 steps</div>
+    </div>
+    <div class="view">
+      <h2 id="base-title">Original RARM</h2>
+      <img id="base-ref" class="main-img" alt="reference frame matched by original RARM">
+      <div id="base-strip" class="strip"></div>
+      <div class="strip-label">Original RARM: released comparator, argmax clip of the selected reference</div>
+    </div>
+    <div class="view">
+      <h2 id="sel-title">Selected setting</h2>
+      <img id="sel-ref" class="main-img" alt="reference frame matched by the selected setting">
+      <div id="sel-strip" class="strip"></div>
+      <div class="strip-label" id="sel-label"></div>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="chart">
+    <h3>Progress (click a setting to show or hide it)</h3>
+    <div class="toggles" id="toggles"></div>
+    <canvas id="chart"></canvas>
+    <div class="legend">
+      <span>solid: fine-tuned comparator · dashed: original</span>
+      <span>thin line: tracked HMM position of the selected setting</span>
+      <span><i class="sw" style="background:var(--grasp)"></i>gripper closes</span>
+      <span><i class="sw" style="background:var(--release)"></i>opens</span>
+      <span>grey dashed: normalized time · green band: task success</span>
+    </div>
+    <div class="slider"><input id="slider" type="range" min="0" value="0" step="1" aria-label="step"></div>
+    <div class="hint">Drag the slider or click a chart. ← / → one step (Shift: 10), Space plays.</div>
+  </div>
+
+  <div class="chart">
+    <h3 id="heat-title">Score margin</h3>
+    <canvas id="heat"></canvas>
+    <div class="legend" id="heat-legend"></div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead id="thead"></thead>
+      <tbody id="table"></tbody>
+    </table>
+  </div>
+  <details id="params"><summary>Settings</summary><div id="params-body"></div></details>
+</main>
+
+<script src="data.js"></script>
+<script>
+const D = window.DATA;
+const $ = (id) => document.getElementById(id);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const pad = (n) => String(n).padStart(4, "0");
+const frameSrc = (name, i) => `frames/${name}/${pad(i)}.jpg`;
+let REF = D.ref_same, RD = null;
+const refSrc = (k) => `references/ref_${REF}/${pad(k)}.jpg`;
+const CMP_NAMES = { original: "original", finetuned: "fine-tuned" };
+const COLORS = { rarm: "--rarm", hmm: "--hmm", hmm_rel: "--rel" };
+const BASE = "rarm";  // RARM as released
+const GATE = (D.reward_configs.rarm || {}).gate_slack ?? 0.5;
+// view kind per setting: rule -> "rarm", HMM absolute -> "hmm", HMM relative -> "hmm_rel"
+const METHODS = D.settings.map((x) => {
+  const m = x.matcher === "rule" ? "rarm" : x.emission === "relative" ? "hmm_rel" : "hmm";
+  return { key: x.key, matcher: m, cmp: x.comparator, color: COLORS[m], dash: x.comparator === "original",
+           label: `${x.key} (${x.label})` };
+});
+const byKey = Object.fromEntries(METHODS.map((m) => [m.key, m]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let SEL = store.get("eval-setting", "rarm_ft_hmm_rel");
+if (!byKey[SEL] || SEL === BASE) SEL = METHODS.find((m) => m.key !== BASE).key;
+const shown = Object.assign(Object.fromEntries(METHODS.map((m) => [m.key, true])), store.get("eval-shown", {}));
+let E = null, idx = 0, frame = 0, timer = null;
+
+const label = (e) => e.kind === "rl" ? `${e.run} ${e.checkpoint.replace("step_", "")} from step ${e.start}` : `${e.kind}, RL kitchen`;
+D.references.forEach((x) => {
+  const o = document.createElement("option");
+  o.value = x.ref; o.textContent = `reference ep ${x.ref} (${x.group === "same" ? "same kitchen" : x.group + ", other kitchen"})`;
+  $("ref").appendChild(o);
+});
+D.episodes.forEach((e, i) => {
+  const o = document.createElement("option");
+  o.value = i; o.textContent = `${e.name} — ${e.success ? "success" : "failure"}`;
+  $("episode").appendChild(o);
+});
+METHODS.forEach((m) => {
+  if (m.key === BASE) return;
+  const o = document.createElement("option");
+  o.value = m.key; o.textContent = `right panel: ${m.label}`; o.selected = m.key === SEL;
+  $("setting").appendChild(o);
+});
+for (const el of ["rollout-strip", "base-strip", "sel-strip"]) {
+  for (let k = 0; k < D.clip; k++) $(el).appendChild(document.createElement("img"));
+}
+
+function swatch(m) {
+  return `<svg width="22" height="10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" stroke="${css(m.color)}"
+    stroke-width="${m.dash ? 2 : 3}" ${m.dash ? 'stroke-dasharray="5 3"' : ""}/></svg>`;
+}
+
+function buildToggles() {
+  $("toggles").innerHTML = METHODS.map((m) => `<label class="toggle ${shown[m.key] ? "" : "off"}">
+    <input type="checkbox" data-k="${m.key}" ${shown[m.key] ? "checked" : ""}>${swatch(m)}${m.label}</label>`).join("");
+  for (const box of $("toggles").querySelectorAll("input")) box.onchange = () => {
+    shown[box.dataset.k] = box.checked; store.set("eval-shown", shown);
+    box.parentElement.classList.toggle("off", !box.checked); draw();
+  };
+  $("stats").innerHTML = `<div class="stat"><span>Step / time</span><b id="s-frame"></b></div>` +
+    METHODS.map((m) => `<div class="stat"><span>${m.label}</span><b id="s-${m.key}"></b></div>`).join("") +
+    `<div class="stat"><span>Task success</span><b id="s-success"></b></div>`;
+}
+
+function buildTable() {
+  const f = (x) => x.toFixed(2);
+  $("thead").innerHTML = `<tr><th>Episode (final progress, reference ep ${REF})</th><th>Kind</th><th>Success</th>${METHODS.map((m) => `<th>${m.label}</th>`).join("")}</tr>`;
+  $("table").innerHTML = D.episodes.map((e, i) => {
+    const out = D.excluded.includes(e.name) ? ' <span class="muted">(not in metrics)</span>' : "";
+    return `<tr data-i="${i}" class="${i === idx ? "sel" : ""}"><td>${e.name}${out}</td><td>${e.kind}</td><td>${e.success ? "yes" : "no"}</td>
+      ${METHODS.map((m) => `<td>${f(D.finals[`${REF}|${e.name}|${m.key}`])}</td>`).join("")}</tr>`;
+  }).join("");
+  for (const tr of $("table").children) tr.onclick = () => { $("episode").value = tr.dataset.i; selectEpisode(+tr.dataset.i); };
+}
+
+function buildMetrics() {
+  const f = (x) => x === null || x === undefined ? "–" : x.toFixed(2);
+  const sg = (x) => x === null || x === undefined ? "–" : (x >= 0 ? "+" : "") + x.toFixed(2);
+  const G = D.groups, cols = [["same", "median", `same kitchen (ep ${D.ref_same})`], ["test", "median", "test, median"],
+    ["test", "worst", "test, worst"], ["dev", "median", "dev, median"]];
+  $("mhead").innerHTML = `<tr><th>Setting</th>${cols.map(([, , t]) => `<th colspan="2" class="grp">${t}</th>`).join("")}
+    <th colspan="2" class="grp">selected: ep ${REF}</th></tr>
+    <tr><th></th>${'<th class="grp">AUROC</th><th>gap</th>'.repeat(cols.length + 1)}</tr>`;
+  $("mbody").innerHTML = METHODS.map((m) => {
+    const head = D.headline.includes(m.key), P = D.per_reference[String(REF)][m.key];
+    return `<tr><td>${head ? `<b>${m.label}</b>` : m.label}</td>` +
+      cols.map(([g, w]) => `<td class="grp">${f(G[g][m.key].auroc[w])}</td><td>${sg(G[g][m.key].gap[w])}</td>`).join("") +
+      `<td class="grp">${f(P.auroc)}</td><td>${sg(P.gap)}</td></tr>`;
+  }).join("");
+}
+
+function loadRef(r, done) {
+  window.REF_DATA = window.REF_DATA || {};
+  if (window.REF_DATA[r]) { done(); return; }
+  const s = document.createElement("script");
+  s.src = `refs/ref_${r}.js`; s.onload = done; document.body.appendChild(s);
+}
+
+function selectRef(r) {
+  REF = +r; $("ref").value = REF;
+  loadRef(REF, () => { RD = window.REF_DATA[REF]; buildMetrics(); selectEpisode(idx, frame); });
+}
+
+function selectEpisode(i, keepFrame) {
+  idx = i; E = Object.assign({}, D.episodes[i], RD.episodes[D.episodes[i].name]);
+  $("slider").max = E.length - 1;
+  buildTable(); setFrame(keepFrame || 0);
+}
+
+function rowAt(f) {
+  let lo = 0, hi = E.t.length - 1, best = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (E.t[m] <= f) { best = m; lo = m + 1; } else hi = m - 1; }
+  return best;
+}
+
+// margin used by a setting's gate: S - m_j (absolute) or S - max_k S (relative), in score units
+function margin(m, r, j) {
+  const S = E.scores[m.cmp][r];
+  if (m.matcher === "hmm_rel") return (S[j] - Math.max(...S)) / 100;
+  return (S[j] - RD.self_best[m.cmp][j]) / 100;
+}
+
+function setRef(prefix, j, title, dim) {
+  $(`${prefix}-ref`).src = refSrc(j + D.mid);
+  $(`${prefix}-ref`).style.opacity = dim ? 0.45 : 1;
+  const imgs = $(`${prefix}-strip`).children;
+  for (let k = 0; k < D.clip; k++) imgs[k].src = refSrc(j + k);
+  $(`${prefix}-title`).innerHTML = title;
+}
+
+function matchTitle(m, r) {
+  const M = E.methods[m.key], j = M.pos[r], ok = M.ok[r];
+  const head = `<b>${m.label}</b>: clip ${j} (π ${RD.progress[j].toFixed(2)})<br>`;
+  const mg = margin(m, r, j).toFixed(2);
+  if (m.matcher === "rarm") return head + `margin ${mg} ${ok ? "≥" : "<"} −${GATE} gate`;
+  return head + (ok ? `matched, margin ${mg}` : `<span class="badge no">unmatched</span> position held`);
+}
+
+function setFrame(f) {
+  frame = Math.max(0, Math.min(E.length - 1, f));
+  $("slider").value = frame;
+  $("rollout").src = frameSrc(E.name, frame);
+  $("rollout-title").innerHTML = `<b>${E.name}</b><br>step ${frame} of ${E.length - 1} · ${label(E)}`;
+  const r = rowAt(frame), sel = byKey[SEL];
+  for (const m of METHODS) $(`s-${m.key}`).textContent = (r < 0 ? E.start_progress : E.methods[m.key].progress[r]).toFixed(2);
+  $("sel-label").textContent = sel.matcher === "rarm" ? `${sel.label}: argmax reference clip of this query`
+    : `${sel.label}: tracked position on the reference`;
+  if (r < 0) {
+    for (const id of ["base-ref", "sel-ref"]) $(id).removeAttribute("src");
+    for (const id of ["rollout-strip", "base-strip", "sel-strip"]) for (const im of $(id).children) im.removeAttribute("src");
+    $("base-title").textContent = "Original RARM (no clip scored yet)";
+    $("sel-title").textContent = `${sel.label} (no clip scored yet)`;
+  } else {
+    const t = E.t[r], q = $("rollout-strip").children;
+    for (let k = 0; k < D.clip; k++) q[k].src = frameSrc(E.name, t - (D.clip - 1 - k) * D.interval);
+    const b = byKey[BASE];
+    setRef("base", E.methods[BASE].pos[r], matchTitle(b, r).replace(b.label, "Original RARM"), !E.methods[BASE].ok[r]);
+    setRef("sel", E.methods[SEL].pos[r], matchTitle(sel, r), !E.methods[SEL].ok[r]);
+  }
+  const done = E.first_success !== null && frame >= E.first_success;
+  $("s-success").innerHTML = E.success ? (done ? '<span class="badge yes">reached</span>' : `at step ${E.first_success}`) : "never";
+  $("s-frame").textContent = `${frame} / ${(frame / D.fps).toFixed(1)} s`;
+  draw();
+}
+
+function axes(c) {
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  c.width = w * dpr; c.height = h * dpr;
+  const g = c.getContext("2d"); g.scale(dpr, dpr);
+  const L = 36, T = 8, B = 20, pw = w - L - 8, ph = h - T - B;
+  return { g, w, h, L, T, pw, ph, X: (f) => L + (f / Math.max(1, E.length - 1)) * pw, Y: (p) => T + (1 - p) * ph };
+}
+
+function common(A) {
+  const { g, L, T, ph, X, Y, h, w } = A;
+  g.font = "11px system-ui, sans-serif";
+  if (E.first_success !== null) {
+    g.fillStyle = css("--success"); g.globalAlpha = 0.12;
+    g.fillRect(X(E.first_success), T, X(E.length - 1) - X(E.first_success), ph); g.globalAlpha = 1;
+  }
+  g.fillStyle = css("--muted"); g.strokeStyle = css("--line");
+  for (const p of [0, 0.25, 0.5, 0.75, 1]) { g.beginPath(); g.moveTo(L, Y(p)); g.lineTo(w - 8, Y(p)); g.stroke(); g.fillText(p.toFixed(2), 2, Y(p) + 4); }
+  for (let s = 0; s <= (E.length - 1) / D.fps; s += 5) g.fillText(`${s}s`, X(s * D.fps) - 6, h - 5);
+  for (const [t, kind] of E.events) {
+    g.strokeStyle = css(kind === "grasp" ? "--grasp" : "--release"); g.globalAlpha = 0.6;
+    g.beginPath(); g.moveTo(X(t), T); g.lineTo(X(t), T + ph); g.stroke(); g.globalAlpha = 1;
+  }
+}
+
+function stepLine(A, values, color, width, alpha, dash) {
+  const { g, X, Y } = A;
+  g.strokeStyle = color; g.lineWidth = width; g.globalAlpha = alpha; g.setLineDash(dash || []); g.beginPath();
+  let prev = E.start_progress; g.moveTo(X(0), Y(prev));
+  values.forEach((v, k) => { g.lineTo(X(E.t[k]), Y(prev)); g.lineTo(X(E.t[k]), Y(v)); prev = v; });
+  g.lineTo(X(E.length - 1), Y(prev)); g.stroke(); g.lineWidth = 1; g.globalAlpha = 1; g.setLineDash([]);
+}
+
+function cursor(A) {
+  A.g.strokeStyle = css("--cursor"); A.g.beginPath(); A.g.moveTo(A.X(frame), A.T); A.g.lineTo(A.X(frame), A.T + A.ph); A.g.stroke();
+}
+
+function draw() {
+  const sel = byKey[SEL], S = E.methods[SEL], prog = RD.progress;
+  const A = axes($("chart"));
+  common(A);
+  A.g.setLineDash([4, 4]); A.g.strokeStyle = css("--diag");
+  A.g.beginPath(); A.g.moveTo(A.X(0), A.Y(E.start_progress)); A.g.lineTo(A.X(E.length - 1), A.Y(1)); A.g.stroke(); A.g.setLineDash([]);
+  if (S.tracked) stepLine(A, S.tracked, css(sel.color), 1.3, 0.35);
+  for (const m of METHODS) {
+    if (!shown[m.key]) continue;
+    stepLine(A, E.methods[m.key].progress, css(m.color), m.dash ? 1.8 : 2.6, m.dash ? 0.8 : 1, m.dash ? [6, 4] : null);
+  }
+  cursor(A);
+
+  // heatmap of the selected setting's margin, with its matches on top
+  const Hc = axes($("heat")), M = prog.length, Q = E.t.length, rel = sel.matcher === "hmm_rel";
+  const gateTxt = rel ? `S[t, j] − max<sub>k</sub> S[t, k]` : `S[t, j] − m<sub>j</sub>`;
+  $("heat-title").innerHTML = `${sel.label}: margin ${gateTxt} (time × reference clip, reference ep ${REF}). Bright = strong match; the gate is at −${GATE}.`;
+  $("heat-legend").innerHTML = sel.matcher === "rarm"
+    ? `<span><i class="sw" style="background:var(--conf)"></i>argmax, passed gate · <i class="sw" style="background:var(--weak)"></i>below gate</span>`
+    : `<span><i class="sw" style="background:${css(sel.color)}"></i>HMM position (hollow = unmatched)</span>`;
+  const off = document.createElement("canvas"); off.width = Q; off.height = M;
+  const og = off.getContext("2d"), img = og.createImageData(Q, M);
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const base = dark ? [31, 31, 29] : [255, 255, 255], hot = dark ? [240, 200, 120] : [30, 60, 120];
+  for (let t = 0; t < Q; t++) {
+    const row = E.scores[sel.cmp][t], top = Math.max(...row);
+    for (let j = 0; j < M; j++) {
+      const mg = (row[j] - (rel ? top : RD.self_best[sel.cmp][j])) / 100;
+      const v = Math.max(0, Math.min(1, (mg + 1.5) / 1.8)), a = Math.pow(v, 1.6);
+      const p = ((M - 1 - j) * Q + t) * 4;
+      for (let c = 0; c < 3; c++) img.data[p + c] = base[c] + (hot[c] - base[c]) * a;
+      img.data[p + 3] = 255;
+    }
+  }
+  og.putImageData(img, 0, 0);
+  const hg = Hc.g; hg.imageSmoothingEnabled = false;
+  const x0 = Hc.X(E.t[0]), x1 = Hc.X(E.t[Q - 1]);
+  hg.drawImage(off, x0, Hc.T, Math.max(1, x1 - x0), Hc.ph);
+  common(Hc);
+  const Yj = (j) => Hc.Y(prog[j]);
+  if (sel.matcher === "rarm") {
+    S.pos.forEach((j, k) => {
+      hg.fillStyle = css(S.ok[k] ? "--conf" : "--weak");
+      hg.beginPath(); hg.arc(Hc.X(E.t[k]), Yj(j), 2.2, 0, 7); hg.fill();
+    });
+  } else {
+    hg.strokeStyle = css(sel.color); hg.lineWidth = 2; hg.beginPath();
+    S.pos.forEach((j, k) => (k ? hg.lineTo : hg.moveTo).call(hg, Hc.X(E.t[k]), Yj(j)));
+    hg.stroke(); hg.lineWidth = 1;
+    S.pos.forEach((j, k) => {
+      if (S.ok[k]) return;
+      hg.strokeStyle = css(sel.color); hg.fillStyle = css("--panel");
+      hg.beginPath(); hg.arc(Hc.X(E.t[k]), Yj(j), 2.4, 0, 7); hg.fill(); hg.stroke();
+    });
+  }
+  cursor(Hc);
+  for (const [c, Z] of [[$("chart"), A], [$("heat"), Hc]]) {
+    c.onclick = (ev) => setFrame(Math.round(((ev.offsetX - Z.L) / Z.pw) * (E.length - 1)));
+  }
+}
+
+function play() {
+  if (timer) { clearInterval(timer); timer = null; $("play").textContent = "Play"; return; }
+  if (frame >= E.length - 1) setFrame(0);
+  $("play").textContent = "Pause";
+  timer = setInterval(() => { if (frame >= E.length - 1) { play(); return; } setFrame(frame + 1); },
+                      1000 / (D.fps * parseFloat($("speed").value)));
+}
+
+const RC = D.reward_configs, H = (RC.rarm_ft_hmm_rel || RC.rarm_hmm || {}).hmm || {};
+$("params-body").innerHTML = `<p>Settings are reward configs (configs/rewards/&lt;name&gt;.yaml): comparator original
+  (RARM's released heads) or fine-tuned (subtask-aligned pairs); matcher RARM rule (argmax clip, gate m<sub>j</sub> − ${GATE},
+  forward-only ratchet) or HMM: τ = ${H.tau}, P(stay) = ${H.p_stay_pos}, forward moves 1…${H.k} equally likely, backward ≤ ${H.back}
+  (p ${H.p_back} each), no skips; matched→unmatched ${H.p_leave}, unmatched→unmatched ${H.p_stay}; unmatched emission −${H.gate_slack}/τ;
+  absolute emission (S − m<sub>j</sub>)/τ, relative emission (S − max<sub>k</sub> S)/τ.
+  Each comparator uses its own self-match m<sub>j</sub> on the selected reference. All rollouts are in the RL kitchen
+  (reference ep ${D.ref_same}); only the reference demo changes.</p>`;
+
+$("episode").onchange = (e) => { if (timer) play(); selectEpisode(+e.target.value); };
+$("ref").onchange = (e) => { if (timer) play(); selectRef(e.target.value); };
+$("setting").onchange = (e) => { SEL = e.target.value; store.set("eval-setting", SEL); setFrame(frame); };
+$("slider").oninput = (e) => setFrame(+e.target.value);
+$("play").onclick = play;
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "SELECT" || e.target.tagName === "INPUT" && e.target.type === "checkbox") return;
+  if (e.key === "ArrowRight") { setFrame(frame + (e.shiftKey ? 10 : 1)); e.preventDefault(); }
+  if (e.key === "ArrowLeft") { setFrame(frame - (e.shiftKey ? 10 : 1)); e.preventDefault(); }
+  if (e.key === " ") { play(); e.preventDefault(); }
+});
+window.addEventListener("resize", () => draw());
+buildToggles();
+selectRef(D.ref_same);
+</script>
+</body>
+</html>

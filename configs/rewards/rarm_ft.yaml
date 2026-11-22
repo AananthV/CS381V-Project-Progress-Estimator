@@ -1,0 +1,9 @@
+# Fine-tuned comparator, RARM rule (ablation: comparator only).
+type: rarm
+comparator: finetuned
+heads: outputs/finetune/{task}/model/heads.pt   # pr-finetune; SHA-checked
+heads_sha256:
+  add_sweetener: c6d364c4e3737fc9bd58431b25b31716d72046fb62c20df0003a635daf4e53fc
+heads_url: {}              # optional download link per task
+matcher: rule
+gate_slack: 0.5

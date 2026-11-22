@@ -3,43 +3,47 @@ requires = ["setuptools>=71"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "coffee-progress"
-version = "0.1.0"
-description = "Configurable RoboCasa video datasets for task progress estimation"
+name = "progress-reward"
+version = "0.2.0"
+description = "Learned progress rewards for robot RL on RoboCasa: RARM, a fine-tuned comparator and HMM matching"
 requires-python = ">=3.12,<3.13"
+# Pinned versions (and CUDA PyTorch) are installed by scripts/setup/*; the package itself is then
+# installed with `uv pip install --no-deps -e .`.
 dependencies = [
-  "lerobot==0.3.3",
-  "huggingface-hub>=0.34.2,<1",
-  "av>=14.2,<16",
-  "torch>=2.6,<2.8",
-  "torchvision>=0.21,<0.23",
-  "numpy>=1.26,<3",
+  "torch>=2.7,<2.8",
+  "numpy>=2,<3",
   "pyyaml>=6,<7",
-  "matplotlib>=3.9,<4",
+  "huggingface-hub",
+  "pyarrow",
+  "av",
+  "pillow",
+  "mujoco==3.3.1",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<9", "ruff>=0.9"]
+dev = ["pytest>=8", "ruff>=0.9"]
 
 [project.scripts]
-coffee-download = "coffee_progress.download:main"
-coffee-inspect = "coffee_progress.inspect:main"
-coffee-split = "coffee_progress.splits:main"
-coffee-evaluate = "coffee_progress.evaluation.cli:main"
-coffee-view = "coffee_progress.evaluation.serve:main"
+pr-download = "progress_reward.data.download:main"
+pr-check-task = "progress_reward.sim.check_task:main"
+pr-train-rl = "progress_reward.rl.train:main"
+pr-eval-rl = "progress_reward.rl.evaluate:main"
+pr-dashboard = "progress_reward.rl.report:main"
+pr-finetune-collect = "progress_reward.finetune.collect:main"
+pr-finetune = "progress_reward.finetune.train:main"
+pr-record = "progress_reward.evaluation.record:main"
+pr-score = "progress_reward.evaluation.score:main"
+pr-report = "progress_reward.evaluation.report:main"
+pr-view = "progress_reward.viewer.serve:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"coffee_progress.evaluation" = ["assets/*"]
+"progress_reward.viewer" = ["*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["integration: requires the downloaded RoboCasa dataset"]
 
 [tool.ruff]
-line-length = 100
-
-[tool.ruff.lint]
-select = ["E", "F", "I"]
+line-length = 120

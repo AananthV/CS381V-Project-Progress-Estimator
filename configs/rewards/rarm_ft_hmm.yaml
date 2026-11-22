@@ -1,0 +1,18 @@
+# Fine-tuned comparator, HMM tracking with the absolute emission.
+type: rarm
+comparator: finetuned
+heads: outputs/finetune/{task}/model/heads.pt   # pr-finetune; SHA-checked
+heads_sha256:
+  add_sweetener: c6d364c4e3737fc9bd58431b25b31716d72046fb62c20df0003a635daf4e53fc
+heads_url: {}              # optional download link per task
+matcher: hmm
+hmm:
+  emission: absolute       # (g - m_j) / tau
+  tau: 0.3
+  k: 3                     # forward moves 1..k per query clip, equally likely
+  p_stay_pos: 0.5
+  p_back: 0.01
+  back: 2
+  p_leave: 0.02
+  p_stay: 0.9
+  gate_slack: 0.5

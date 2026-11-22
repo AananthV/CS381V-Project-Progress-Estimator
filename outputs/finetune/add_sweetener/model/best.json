@@ -1,0 +1,14 @@
+{
+ "step": 2750,
+ "train_loss": 0.4176,
+ "acc_cross": 0.309,
+ "acc_anchor": 0.984,
+ "acc_alias": 0.777,
+ "acc_far": 0.969,
+ "acc_other": 0.918,
+ "acc_random": 0.965,
+ "val_loss": 0.4817,
+ "align_hit": 0.255,
+ "align_gate": 0.009,
+ "random_gate": 0.018
+}

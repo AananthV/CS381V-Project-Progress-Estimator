@@ -1,0 +1,14 @@
+# Original comparator, HMM tracking with the relative emission (ablation: matcher only).
+type: rarm
+comparator: original
+matcher: hmm
+hmm:
+  emission: relative       # (g - max_k g) / tau
+  tau: 0.3
+  k: 3                     # forward moves 1..k per query clip, equally likely
+  p_stay_pos: 0.5
+  p_back: 0.01
+  back: 2
+  p_leave: 0.02
+  p_stay: 0.9
+  gate_slack: 0.5

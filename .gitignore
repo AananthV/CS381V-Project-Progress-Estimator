@@ -1,4 +1,4 @@
-.venv/
+.venv*/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -14,20 +14,28 @@ build/
 dist/
 
 # Downloaded data and generated evaluation/video artifacts.
-data/
+/data/
 outputs/*
-# RL benchmark: results and dashboard are shared; weights and logs are not.
-!outputs/rl_benchmark/
-outputs/rl_benchmark/_models/
-outputs/rl_benchmark/**/checkpoints/
-outputs/rl_benchmark/**/resume.pt
-outputs/rl_benchmark/**/*.log
+# Results are shared; weights, checkpoints, caches, renders and logs are not.
+!outputs/rl/
+outputs/rl/**/checkpoints/
+outputs/rl/**/resume.pt
+outputs/rl/**/*.log
+outputs/rl/**/*.err
+!outputs/eval/
+outputs/eval/*/*
+!outputs/eval/*/results.json
+!outputs/finetune/
+outputs/finetune/*/*
+!outputs/finetune/*/model/
+outputs/finetune/*/model/*.pt
 
 # Local credentials, editor settings, and OS metadata.
 .env
 .env.*
 !.env.example
 .vscode/
+.claude/
 .idea/
 .DS_Store
 Thumbs.db

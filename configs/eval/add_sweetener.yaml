@@ -1,0 +1,58 @@
+# Offline reward evaluation of add_sweetener (progress_reward.evaluation): fixed rollouts with known
+# success, scored against reference demos from the RL kitchen and from other kitchens.
+task: add_sweetener
+
+# Recorded episodes (pr-record). Defaults: scene = the task's reference demo (the RL kitchen).
+# kind: expert (a demo's own states in its own scene) | replay (reference actions, open loop) |
+#       random (uniform actions) | rl (checkpoint of outputs/rl/<task>/<run>/seed_0, deterministic actions)
+# start: demo step to start from; noise_seed: step-0 start noise (evaluation trial k uses seed k);
+# want_success: retry with other noise seeds until the episode succeeds (simulator is not deterministic).
+episodes:
+  expert_ep017_reference: {kind: expert, scene: 17}
+  expert_ep026_heldout: {kind: expert, scene: 26}
+  expert_ep028_heldout: {kind: expert, scene: 28}
+  expert_ep045_heldout: {kind: expert, scene: 45}
+  replay_reference_noise0: {kind: replay, start: 0, noise_seed: 0}
+  random_start0_noise0: {kind: random, start: 0, noise_seed: 0, seed: 0}
+  random_start0_noise1: {kind: random, start: 0, noise_seed: 1, seed: 1}
+  random_start175: {kind: random, start: 175, seed: 2}
+  rl_100k_start146: {kind: rl, run: rarm, checkpoint: step_0100000, start: 146}
+  rl_500k_start146: {kind: rl, run: rarm, checkpoint: step_0500000, start: 146, want_success: true}
+  rl_1000k_start146: {kind: rl, run: rarm, checkpoint: step_1000000, start: 146, want_success: true}
+  rl_1000k_start43: {kind: rl, run: rarm, checkpoint: step_1000000, start: 43}
+  rl_1000k_step0: {kind: rl, run: rarm, checkpoint: step_1000000, start: 0, noise_seed: 0}
+  rl_700k_step0: {kind: rl, run: rarm, checkpoint: step_0700000, start: 0, noise_seed: 0, want_success: true}
+  # step-0 trials picked from the runs' eval/results.json (expected outcome; the label is the recorded one)
+  rl_rarm_hmm_500k_step0_seed0: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 0, expected: success}
+  rl_rarm_hmm_500k_step0_seed1: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 1, expected: success}
+  rl_rarm_hmm_500k_step0_seed2: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 2, expected: success}
+  rl_rarm_hmm_500k_step0_seed3: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 3, expected: success}
+  rl_rarm_hmm_500k_step0_seed4: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 4, expected: success}
+  rl_rarm_hmm_500k_step0_seed6: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 6, expected: success}
+  rl_rarm_hmm_500k_step0_seed8: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 8, expected: success}
+  rl_rarm_700k_step0_seed0: {kind: rl, run: rarm, checkpoint: step_0700000, start: 0, noise_seed: 0, expected: success}
+  rl_rarm_700k_step0_seed2: {kind: rl, run: rarm, checkpoint: step_0700000, start: 0, noise_seed: 2, expected: success}
+  rl_rarm_700k_step0_seed8: {kind: rl, run: rarm, checkpoint: step_0700000, start: 0, noise_seed: 8, expected: success}
+  rl_rarm_hmm_500k_step0_seed5: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 5, expected: failure}
+  rl_rarm_hmm_500k_step0_seed7: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 7, expected: failure}
+  rl_rarm_hmm_500k_step0_seed13: {kind: rl, run: rarm_hmm, checkpoint: step_0500000, start: 0, noise_seed: 13, expected: failure}
+  rl_rarm_hmm_300k_step0_seed0: {kind: rl, run: rarm_hmm, checkpoint: step_0300000, start: 0, noise_seed: 0, expected: failure}
+  rl_rarm_hmm_300k_step0_seed1: {kind: rl, run: rarm_hmm, checkpoint: step_0300000, start: 0, noise_seed: 1, expected: failure}
+  rl_rarm_700k_step0_seed1: {kind: rl, run: rarm, checkpoint: step_0700000, start: 0, noise_seed: 1, expected: failure}
+  rl_rarm_700k_step0_seed3: {kind: rl, run: rarm, checkpoint: step_0700000, start: 0, noise_seed: 3, expected: failure}
+  rl_rarm_300k_step0_seed0: {kind: rl, run: rarm, checkpoint: step_0300000, start: 0, noise_seed: 0, expected: failure}
+  rl_rarm_500k_step0_seed0: {kind: rl, run: rarm, checkpoint: step_0500000, start: 0, noise_seed: 0, expected: failure}
+  rl_rarm_1000k_step0_seed1: {kind: rl, run: rarm, checkpoint: step_1000000, start: 0, noise_seed: 1, expected: failure}
+
+# Reference demos (each rendered in its own kitchen). same: the RL kitchen; test: clean 2-cube
+# reward_heldout demos in other kitchens, never looked at while designing the reward; dev: the ones that were.
+references:
+  same: [17]
+  test: [2, 7, 9, 16, 53, 71, 74, 87, 98]
+  dev: [26, 28, 45]
+
+# Reward settings compared (configs/rewards/<name>.yaml); the headline ones are bold in the report.
+settings: [rarm, rarm_hmm, rarm_hmm_rel, rarm_ft, rarm_ft_hmm, rarm_ft_hmm_rel]
+headline: [rarm, rarm_hmm, rarm_ft_hmm_rel]
+# Scored only in the RL kitchen; left out of the metrics (it is the same-kitchen reference itself).
+excluded_from_metrics: [expert_ep017_reference]

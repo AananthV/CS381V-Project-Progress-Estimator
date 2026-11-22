@@ -1,0 +1,2 @@
+# No shaping: the step reward is only the fixed task terms (success bonus, step cost).
+type: sparse

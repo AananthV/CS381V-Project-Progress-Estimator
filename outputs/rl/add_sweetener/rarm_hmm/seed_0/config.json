@@ -1,0 +1,57 @@
+{
+  "task": "add_sweetener",
+  "reward": "rarm_hmm",
+  "seed": 0,
+  "total_steps": 1000000,
+  "checkpoint_every": 100000,
+  "envs": 2,
+  "samplers": 2,
+  "drq": {
+    "replay_size": 750000,
+    "batch_size": 256,
+    "nstep": 3,
+    "discount": 0.99,
+    "seed_frames": 4000,
+    "update_every": 2
+  },
+  "task_spec": {
+    "name": "add_sweetener",
+    "env_name": "AddSweetener",
+    "dataset": {
+      "repo": "nvidia/PhysicalAI-Robotics-Manipulation-Kitchen-Demos",
+      "path": "pretrain/composite/AddSweetener/20250829/lerobot",
+      "revision": "522e4ffa3bb9d9729f79b241c65fc9e589f2659c",
+      "local": "data/add_sweetener/lerobot"
+    },
+    "reference_episode": 17,
+    "split": "add_sweetener_split.json",
+    "horizon": 876,
+    "policy_cameras": [
+      "robot0_agentview_left",
+      "robot0_eye_in_hand"
+    ],
+    "policy_image_size": 84,
+    "frame_stack": 3,
+    "success_hold_steps": 2,
+    "budget": {
+      "total_steps": 1000000,
+      "checkpoint_every": 100000
+    },
+    "starts": {
+      "demo_prob": 0.95,
+      "start_ratio": 0.01,
+      "end_ratio": 0.95,
+      "init_noise_std": 0.0005,
+      "action_buffer_prob": 0.5,
+      "action_buffer_length": 70,
+      "action_buffer_noise": 0.01
+    },
+    "reward_terms": {
+      "success": 5.0,
+      "step_cost": 0.5
+    },
+    "evaluation": {
+      "trials": 30
+    }
+  }
+}
