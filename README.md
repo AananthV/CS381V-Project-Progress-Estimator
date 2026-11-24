@@ -46,7 +46,9 @@ fine-tuned heads come from `pr-finetune` or a link set as `heads_url` in `config
 
 On TACC: `sbatch -J ours_s0 scripts/setup/tacc/train.slurm rarm_ft_hmm_rel 0` (add `--resume` to continue),
 or up to 3 runs on one 3-GPU node: `sbatch -J s1 scripts/setup/tacc/train_multi.slurm rarm_ft_hmm_rel:1 rarm:1 sparse:1`;
-`scripts/setup/tacc/smoke.slurm` checks a fresh install. Rewards: `configs/rewards/` (`sparse`, `rarm`,
+`scripts/setup/tacc/smoke.slurm` checks a fresh install. If `$WORK` is near its quota, keep the project
+on `$SCRATCH` and `export TACC_TOOLS=$SCRATCH/tools HF_HOME=$SCRATCH/cache/huggingface` before setup and `sbatch`
+(`$SCRATCH` is purged after 10 days without access, so copy results off it). Rewards: `configs/rewards/` (`sparse`, `rarm`,
 `rarm_hmm`, `rarm_hmm_rel`, `rarm_ft`, `rarm_ft_hmm`, `rarm_ft_hmm_rel`). Which command produces which
 result: [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md). Design details:
 [docs/SYSTEM_SPECIFICATIONS.md](docs/SYSTEM_SPECIFICATIONS.md).

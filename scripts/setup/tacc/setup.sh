@@ -6,7 +6,7 @@
 set -euo pipefail
 source scripts/setup/tacc/env.sh
 if ! command -v uv >/dev/null; then
-  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$WORK/tools/uv" UV_NO_MODIFY_PATH=1 sh
+  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$TACC_TOOLS/uv" UV_NO_MODIFY_PATH=1 sh
 fi
 uv --version
 bash scripts/setup/setup_linux.sh

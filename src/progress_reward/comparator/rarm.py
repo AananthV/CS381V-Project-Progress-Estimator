@@ -43,7 +43,9 @@ def download():
     if not DINOV3_REPO.exists():
         subprocess.run(["git", "clone", "-q", "https://github.com/facebookresearch/dinov3.git", str(DINOV3_REPO)],
                        check=True)
-    subprocess.run(["git", "-C", str(DINOV3_REPO), "checkout", "-q", DINOV3_COMMIT], check=True)
+    head = subprocess.run(["git", "-C", str(DINOV3_REPO), "rev-parse", "HEAD"], capture_output=True, text=True)
+    if head.stdout.strip() != DINOV3_COMMIT:  # skip when pinned: parallel runs would race on git's index.lock
+        subprocess.run(["git", "-C", str(DINOV3_REPO), "checkout", "-q", DINOV3_COMMIT], check=True)
 
 
 SIZE, PATCHES, POOLED, DIM = 384, 24, 8, 768

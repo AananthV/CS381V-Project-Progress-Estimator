@@ -18,6 +18,8 @@ RoboCasa AddSweetener (`configs/tasks/add_sweetener.yaml`).
   `nvidia/PhysicalAI-Robotics-Manipulation-Kitchen-Demos`, revision pinned in the task YAML, stored
   unchanged in `data/add_sweetener/lerobot` (`pr-download`). Per episode the code reads `extras/`
   (simulator states, scene XML, metadata) and the actions (reordered to the controller's order).
+  `pr-download` lists only the task's folder and fetches its files with 4 workers, retrying HTTP 429
+  (shared IPs such as TACC) with exponential backoff up to 10 minutes.
 - **Split** (`configs/splits/add_sweetener_split.json`, fixed; never regenerated): `reference` (episode
   17: 2 cubes, 438 steps), the only demo RL touches and never used to train a reward; `reward_train`
   (84) and `reward_heldout` (21), drawn once (seed 0, stratified by cube count). Learned parts train on
@@ -45,7 +47,8 @@ RoboCasa AddSweetener (`configs/tasks/add_sweetener.yaml`).
   processor (3×3 average pooling 24×24 → 8×8 patches, temporal RoPE, one self-attention layer); cross-
   attention and comparison head map (query clip, reference clip) to a logit g. Weights: Hugging Face
   `pengzhi1998/RARM` `checkpoint_epoch_45_generic.pt` (SHA-256 checked), DINOv3 code at RARM's pinned
-  commit, in `outputs/models/rarm/`.
+  commit, in `outputs/models/rarm/` (checked out only when not already pinned, so parallel runs do
+  not race on git's index lock).
 - **Clips**: 5 images, one every 4 env steps, agentview-left. Reference clips at every image (stride 1);
   clip j has progress (j + 2) / images; m_j = max_k g(r_j, r_k) (self-match, RARM's gate scale).
 - **Fine-tuned heads** (`heads.py`): the temporal processor, cross-attention and head replaced by a
